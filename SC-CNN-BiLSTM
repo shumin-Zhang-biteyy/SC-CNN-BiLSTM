@@ -1,0 +1,51 @@
+#zhang shumin python 3.7 tf 2.4.0
+BiLSTM1=30
+BiLSTM2=20
+BiLSTM3=16
+
+
+payloadBits = 512
+output = 32
+
+# SC-CNN
+input_bits = Input(shape=(payloadBits, 2))
+tcp1 = Conv1D(filters=4, kernel_size=4, strides=4, padding='same')(input_bits)
+tcp1 = BatchNormalization()(tcp1)
+tcp1 = Activation('relu')(tcp1)
+tcp2 = Conv1D(filters=8, kernel_size=2, strides=2, padding='same')(tcp1)
+tcp2 = BatchNormalization()(tcp2)
+tcp2 = Activation('relu')(tcp2)
+tcp3 = Conv1D(filters=16, kernel_size=2, strides=2, padding='same')(tcp2)
+tcp3 = BatchNormalization()(tcp3)
+tcp3 = Activation('relu')(tcp3)
+
+tcp4 = Conv1DTranspose(filters=8, kernel_size=2, strides=2, padding='same')(tcp3)
+tcp4 = BatchNormalization()(tcp4)
+tcp4 = Activation('relu')(tcp4)
+tcp4 = add([tcp2,tcp4])
+tcp5 = Conv1DTranspose(filters=4, kernel_size=2, strides=2, padding='same')(tcp4)
+tcp5 = BatchNormalization()(tcp5)
+temp5 = Activation('relu')(tcp5)
+tcp5 = add([temp1,temp5])
+tcp6 = Conv1DTranspose(filters=2, kernel_size=4, strides=4, padding='same')(tcp5)
+tcp6 = BatchNormalization()(tcp6)
+tcp6 = Activation('relu')(tcp6)
+tcp6 = add([input_bits,tcp6])
+
+# Build multi-layer BiLSTM Network
+tcp_lstm = Bidirectional(LSTM(BiLSTM1, return_sequences=True))(tcp6)
+
+tcp_lstm = Bidirectional(LSTM(BiLSTM2, return_sequences=True))(tcp_lstm)
+
+tcp_lstm = Bidirectional(LSTM(BiLSTM3))(tcp_lstm)
+
+final_output = Dense(output, activation='sigmoid', name='model_output')(tcp_lstm)
+out_put = Dense(output, activation='sigmoid')(final_output)
+model = Model(input_bits, out_put)
+optimizers = tf.keras.optimizers.Rmsprop(learning_rate=0.001)
+model.compile(optimizer=optimizers, loss='mse', metrics=[bit_err])
+model.summary()
+
+
+
+
